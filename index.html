@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Particle Canvas</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden;cursor:none;font-family:monospace;}
+canvas{display:block;}
+#btns{position:fixed;bottom:20px;display:flex;gap:10px;}
+#btns button{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12px;padding:7px 18px;border-radius:20px;cursor:pointer;transition:.2s;}
+#btns button:hover{background:rgba(255,255,255,0.22);}
+#btns button.on{background:rgba(255,255,255,0.3);border-color:rgba(255,255,255,0.6);}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="btns">
+  <button class="on" onclick="setFx('galaxy')">galaxy</button>
+  <button onclick="setFx('dna')">DNA helix</button>
+  <button onclick="setFx('wormhole')">wormhole</button>
+  <button onclick="setFx('rain')">matrix rain</button>
+  <button onclick="setFx('lissajous')">lissajous</button>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let W,H,t=0,fx='galaxy',mx=0,my=0,burst=[];
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;mx=W/2;my=H/2;}
+resize();window.addEventListener('resize',resize);
+
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+document.addEventListener('touchmove',e=>{mx=e.touches[0].clientX;my=e.touches[0].clientY;},{passive:true});
+document.addEventListener('click',e=>{
+  for(let i=0;i<80;i++){const a=Math.random()*Math.PI*2,s=Math.random()*7+1;burst.push({x:e.clientX,y:e.clientY,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color:`hsl(${Math.random()*360},100%,70%)`});}
+});
+
+function setFx(f){fx=f;document.querySelectorAll('#btns button').forEach(b=>b.classList.toggle('on',b.textContent===f));}
+
+const STARS=900;
+const stars=Array.from({length:STARS},()=>({angle:Math.random()*Math.PI*2,radius:Math.random()*400+5,speed:Math.random()*0.003+0.0005,size:Math.random()*2+0.5,hue:Math.random()*60+180,arm:Math.floor(Math.random()*3)}));
+
+const drops=[];
+function initDrops(){drops.length=0;const cols=Math.floor(W/12);for(let i=0;i<cols;i++)drops.push({x:i*12,y:Math.random()*-H,speed:Math.random()*4+1});}
+initDrops();window.addEventListener('resize',initDrops);
+const CHARS='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
+
+function drawGalaxy(){
+  ctx.fillStyle='rgba(0,0,0,0.18)';ctx.fillRect(0,0,W,H);
+  const cx=W/2+(mx-W/2)*0.08,cy=H/2+(my-H/2)*0.08;
+  stars.forEach(s=>{
+    s.angle+=s.speed;
+    const twist=s.angle+s.radius*0.004,spiralOffset=s.arm*(Math.PI*2/3);
+    const x=cx+Math.cos(twist+spiralOffset)*s.radius;
+    const y=cy+Math.sin(twist+spiralOffset)*s.radius*0.38;
+    const bright=0.4+0.6*(1-s.radius/420);
+    ctx.beginPath();ctx.arc(x,y,s.size,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${s.hue+s.arm*40},80%,${70+bright*30}%,${bright})`;ctx.fill();
+  });
+  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=2;ctx.stroke();
+}
+
+const DNA_PTS=60;
+function drawDNA(){
+  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fillRect(0,0,W,H);
+  const cx=W/2,amp=W*0.22,vert=H/DNA_PTS,mshift=(mx-cx)*0.002;
+  for(let i=0;i<DNA_PTS;i++){
+    const y=i*vert,phase=i*0.22+t*1.2+mshift*i;
+    const x1=cx+Math.cos(phase)*amp,x2=cx+Math.cos(phase+Math.PI)*amp;
+    const bright=0.5+0.5*Math.sin(i*0.3+t);
+    if(i%3===0){
+      ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);
+      ctx.strokeStyle=`hsla(${180+i*3},80%,65%,0.5)`;ctx.lineWidth=1.5;ctx.stroke();
+    }
+    ctx.beginPath();ctx.arc(x1,y,4+bright*2,0,Math.PI*2);ctx.fillStyle=`hsl(${200+i*2},90%,${55+bright*25}%)`;ctx.fill();
+    ctx.beginPath();ctx.arc(x2,y,4+bright*2,0,Math.PI*2);ctx.fillStyle=`hsl(${320+i*2},90%,${55+bright*25}%)`;ctx.fill();
+  }
+  ctx.beginPath();for(let i=0;i<DNA_PTS;i++){const y=i*vert,phase=i*0.22+t*1.2+(mx-W/2)*0.002*i;ctx.lineTo(cx+Math.cos(phase)*amp,y);}
+  ctx.strokeStyle='rgba(100,200,255,0.4)';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();for(let i=0;i<DNA_PTS;i++){const y=i*vert,phase=i*0.22+t*1.2+(mx-W/2)*0.002*i;ctx.lineTo(cx+Math.cos(phase+Math.PI)*amp,y);}
+  ctx.strokeStyle='rgba(255,100,220,0.4)';ctx.lineWidth=2;ctx.stroke();
+}
+
+function drawWormhole(){
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(0,0,W,H);
+  const cx=W/2+(mx-W/2)*0.1,cy=H/2+(my-H/2)*0.1;
+  for(let i=40;i>=0;i--){
+    const prog=i/40,spin=t*2*(1-prog*0.7),rx=prog*W*0.42+2,ry=prog*H*0.42*0.35+2,hue=(t*60+i*9)%360;
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(spin*0.08);
+    ctx.beginPath();ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    ctx.strokeStyle=`hsla(${hue},100%,65%,${0.15+prog*0.4})`;ctx.lineWidth=1.5+(1-prog)*2;ctx.stroke();
+    for(let j=0;j<6;j++){
+      const a=(j/6)*Math.PI*2+spin*0.3;
+      ctx.beginPath();ctx.arc(Math.cos(a)*rx,Math.sin(a)*ry,1.5+prog*1.5,0,Math.PI*2);
+      ctx.fillStyle=`hsl(${hue+j*15},100%,80%)`;ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(cx,cy,8+Math.sin(t*3)*3,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+}
+
+function drawMatrix(){
+  ctx.fillStyle='rgba(0,0,0,0.08)';ctx.fillRect(0,0,W,H);
+  ctx.font='bold 13px monospace';
+  drops.forEach(d=>{
+    const hue=Math.abs(d.x-mx)/W<0.15?60:120;
+    ctx.fillStyle=`hsl(${hue},100%,85%)`;ctx.fillText(CHARS[Math.floor(Math.random()*CHARS.length)],d.x,d.y);
+    ctx.fillStyle=`hsl(${hue},80%,35%)`;ctx.fillText(CHARS[Math.floor(Math.random()*CHARS.length)],d.x,d.y-14);
+    d.y+=d.speed;if(d.y>H+14)d.y=Math.random()*-200;
+  });
+}
+
+const LIS=600;
+function drawLissajous(){
+  ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(0,0,W,H);
+  const A=W*0.38,B=H*0.38,cx=W/2,cy=H/2;
+  const a=2+Math.floor((mx/W)*5),b=3+Math.floor((my/H)*4);
+  for(let i=0;i<LIS;i++){
+    const ph=(i/LIS)*Math.PI*2+t*0.5;
+    const x=cx+A*Math.sin(a*ph+t*0.3),y=cy+B*Math.sin(b*ph);
+    ctx.beginPath();ctx.arc(x,y,1.5,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${(i/LIS*360+t*60)%360},100%,70%,0.8)`;ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='12px monospace';ctx.fillText(`ratio ${a}:${b}`,20,H-20);
+}
+
+function loop(){
+  t+=0.016;
+  if(fx==='galaxy') drawGalaxy();
+  else if(fx==='dna') drawDNA();
+  else if(fx==='wormhole') drawWormhole();
+  else if(fx==='rain') drawMatrix();
+  else if(fx==='lissajous') drawLissajous();
+  burst=burst.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.vx*=0.97;p.life-=0.02;
+    ctx.globalAlpha=p.life;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fillStyle=p.color;ctx.fill();ctx.globalAlpha=1;
+    return p.life>0;
+  });
+  ctx.beginPath();ctx.arc(mx,my,5,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.9)';ctx.fill();
+  ctx.beginPath();ctx.arc(mx,my,12,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1;ctx.stroke();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
